@@ -1,4 +1,13 @@
 #include "KeyboardMatrix.h"
+#include <Mouse.h>  
+
+//TODO: 
+//implement mouse buttons
+//Mouse control PoC - write nested class?
+//Get Oneshot Shift and Fn working
+//Replace Z with Y in Layout
+//cleanup code
+
 
 // Uncomment to show matrix debug messages over serial
 // #define DEBUG
@@ -37,6 +46,19 @@ KeyboardMatrix key_matrix = KeyboardMatrix(NUM_ROWS, NUM_COLS,
 
 // Repeat interval after initial delay
 #define REPEAT_INTERVAL 200000
+
+//Analog Mouse
+const int mouseSpeedDivisor = 60;
+const int Mouse_xPin = A4;  
+const int Mouse_yPin = A5; 
+int xValue = 0;         // the sensor value  
+int xMin = 1023;        // minimum sensor value  
+int xMax = 0;           // maximum sensor value  
+int yValue = 0;  
+int yMin = 1023;  
+int yMax = 0;  
+#define REFRESH_RATE 1  
+static unsigned long lastRefresh = 0;  
 
 // --- Code --------------------------------------------------------------------
 
@@ -220,6 +242,9 @@ void setup() {
     test_string[i] = ' ';
   }
   test_string[63] = '\0';
+
+  Mouse.begin();  
+  
 #ifdef DEBUG
   Serial.println("Finished setup();");
 #endif
@@ -604,6 +629,12 @@ void keyboard_update() {
 
 }
 
+void moveMouse()  
+{  
+  int xMove = (((xValue) - 512) / mouseSpeedDivisor);  
+  int yMove = ((-1*((yValue) - 512) / mouseSpeedDivisor));  
+  Mouse.move(xMove, yMove, 0);  
+}  
 
 void loop() {
   // Check Battery pin every 3seconds
@@ -612,6 +643,37 @@ void loop() {
     Serial << "Batt:" << batt << "\n";
     batt_read_millis = millis();
   }
+
+  //Analog Mouse
+
+  //Calibration start
+  xValue = analogRead(Mouse_xPin);  
+  yValue = analogRead(Mouse_yPin);  
+  
+  // record the maximum sensor value  
+  if (xValue > xMax) {  
+    xMax = xValue;  
+  }  
+  if (yValue > yMax) {  
+    yMax = yValue;  
+  }  
+  
+  // record the minimum sensor value  
+  if (xValue < xMin) {  
+    xMin = xValue;  
+  }  
+  if (yValue < yMin) {  
+    yMin = yValue;  
+  }  
+  //Calibration end
+  
+  if ((lastRefresh + REFRESH_RATE) < millis())  
+  {  
+    moveMouse();  
+  
+    lastRefresh = millis();  
+  }
+
 
   // Run the keyboard update routine
   keyboard_update();
