@@ -227,7 +227,7 @@ void set_brightness(int b) {
 uint32_t batt_read_millis = millis();
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   // delay(2000);
 #ifdef DEBUG
   Serial.println("key_matrix.begin();");
@@ -372,12 +372,12 @@ void keyboard_update() {
           // enable or disable oneshot
           if (ascii_key == ASCII_SHIFT) {
             if (keyboard_state.oneshot_shift) {
-              // Serial.println("keyboard_state.oneshot_shift = false");
+              Serial.println("keyboard_state.oneshot_shift = false");
               keyboard_state.oneshot_shift = false;
             }
             // disable onshot if modifier is pressed a second time
             else {
-              // Serial.println("keyboard_state.oneshot_shift = true");
+              Serial.println("keyboard_state.oneshot_shift = true");
               keyboard_state.oneshot_shift = true;
             }
           }
@@ -394,10 +394,13 @@ void keyboard_update() {
           }
 
           // change layers for oneshot modes
-          if (keyboard_state.oneshot_shift)
+          if (keyboard_state.oneshot_shift) {
             keyboard_state.current_layer = 1;
-          else if (keyboard_state.oneshot_fn)
+            Serial.println("keyboard_state.current_layer = 1"); 
+          }
+          else if (keyboard_state.oneshot_fn){
             keyboard_state.current_layer = 2;
+          }
         }
 #endif
 
@@ -410,6 +413,7 @@ void keyboard_update() {
 #ifdef USE_TEENSY_USB_KEYBOARD
         if (keyboard_state.current_layer == 2) {
           if (printable_character(ascii_key)) {
+            Serial.println("Keyboard.print"); 
             Keyboard.print(ascii_key);
           }
           else if (ascii_key == ASCII_MOUSE_BTN1)
@@ -420,19 +424,9 @@ void keyboard_update() {
             Mouse.click(MOUSE_MIDDLE);
           // TODO: else other keys like mouse buttons?
         }
-        else
+        else {
+          Serial.println("Keyboard.press"); 
           Keyboard.press(usb_key_matrix[pkey->row][pkey->col]);
-#endif
-
-#ifdef ENABLE_ONESHOT_SHIFT_FN
-        // if oneshot is active, and this is not the modifier key, oneshot is used up so set to false
-        if (ascii_key != ASCII_SHIFT && keyboard_state.oneshot_shift) {
-          // Serial.println("clear keyboard_state.oneshot_shift = false");
-          keyboard_state.oneshot_shift = false;
-        }
-        else if (ascii_key != ASCII_FN && keyboard_state.oneshot_fn) {
-          // Serial.println("clear keyboard_state.oneshot_fn = false");
-          keyboard_state.oneshot_fn = false;
         }
 #endif
 
@@ -472,17 +466,33 @@ void keyboard_update() {
     // process released keys
     for (uint8_t i=0; i<key_matrix.released_list.size(); i++) {
       rkey = key_matrix.released_list.get(i);
-
-      // ascii_key = ascii_key_matrix[0][rkey->row][rkey->col];
 #ifdef DEBUG
       Serial << "released key: " << rkey->row << ", " << rkey->col << ", " << '\n';
 #endif
 
 #ifdef USE_TEENSY_USB_KEYBOARD
-      Keyboard.release(usb_key_matrix[rkey->row][rkey->col]);
+      ascii_key = ascii_key_matrix[0][rkey->row][rkey->col];
+      if(ascii_key != ASCII_SHIFT && !keyboard_state.oneshot_shift){
+        Keyboard.release(usb_key_matrix[rkey->row][rkey->col]);
+      }
 #endif
     }
 
+    if(!keyboard_state.oneshot_shift){
+      Keyboard.release(MODIFIERKEY_SHIFT);
+    }
+    
+#ifdef ENABLE_ONESHOT_SHIFT_FN
+        // if oneshot is active, and this is not the modifier key, oneshot is used up so set to false
+        if (ascii_key != ASCII_SHIFT && keyboard_state.oneshot_shift) {
+          // Serial.println("clear keyboard_state.oneshot_shift = false");
+          keyboard_state.oneshot_shift = false;
+        }
+        else if (ascii_key != ASCII_FN && keyboard_state.oneshot_fn) {
+          // Serial.println("clear keyboard_state.oneshot_fn = false");
+          keyboard_state.oneshot_fn = false;
+        }
+#endif
     // print test string
 #ifdef DEBUG
     Serial.println(test_string);
